@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>投研工作台 · Research Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ─────────── tokens ─────────── */
+  :root{
+    --bg-0:#070c18;
+    --bg-1:#0b1220;
+    --bg-2:#111c33;
+    --surface:#172238;
+    --surface-2:#1d2a44;
+    --line:#243353;
+    --line-2:#314a73;
+    --ink:#e8eefb;
+    --ink-2:#9aa9c7;
+    --ink-3:#5e6f93;
+
+    /* semantic */
+    --up:#3ee08f;
+    --up-bg:rgba(62,224,143,.12);
+    --down:#ff5d6c;
+    --down-bg:rgba(255,93,108,.12);
+
+    /* market chips */
+    --hk:#a78bfa;     --hk-bg:rgba(167,139,250,.14);
+    --a:#fb7185;      --a-bg:rgba(251,113,133,.14);
+    --us:#60a5fa;     --us-bg:rgba(96,165,250,.14);
+    --etf:#22d3ee;    --etf-bg:rgba(34,211,238,.14);
+    --watch:#f59e0b;  --watch-bg:rgba(245,158,11,.14);
+
+    --primary:#6c8cff;
+    --primary-2:#5b78ee;
+    --accent:#a78bfa;
+
+    --shadow: 0 12px 28px -10px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.3);
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1000px 600px at 90% -10%, rgba(108,140,255,0.15), transparent 60%),
+      radial-gradient(800px 500px at -10% 110%, rgba(167,139,250,0.12), transparent 60%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1) 30%, var(--bg-1));
+    color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-feature-settings:"tnum";}
+
+  /* ─────────── app shell ─────────── */
+  #app{
+    width:100%;
+    max-width:480px;
+    margin:0 auto;
+    height:100vh;
+    height:100dvh;
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(180deg,#0b1220,#0e1730);
+    box-shadow: 0 0 60px rgba(0,0,0,0.5);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ─────────── header ─────────── */
+  .topbar{
+    padding: 14px 18px 10px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+    background: linear-gradient(180deg, rgba(11,18,32,0.95), rgba(11,18,32,0.7));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 5;
+    border-bottom: 1px solid rgba(36,51,83,0.4);
+  }
+  .topbar .title{
+    display:flex; flex-direction:column; gap:2px;
+    flex:1; min-width:0;
+  }
+  .topbar .title .sub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .topbar h1{
+    margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em;
+    background:linear-gradient(90deg,#fff,#a78bfa);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .topbar .sub{font-size:11px;color:var(--ink-3);letter-spacing:0.04em;}
+  .topbar .pulse-wrap{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; color:var(--ink-2);
+    padding: 5px 10px; background: rgba(62,224,143,0.08);
+    border:1px solid rgba(62,224,143,0.2); border-radius: 999px;
+    flex-shrink:0; white-space:nowrap;
+  }
+  .pulse{ width:6px;height:6px;border-radius:50%;background:var(--up); box-shadow: 0 0 0 0 var(--up); animation: pulse 2s infinite; }
+  @keyframes pulse{
+    0% { box-shadow: 0 0 0 0 rgba(62,224,143,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(62,224,143,0); }
+    100% { box-shadow: 0 0 0 0 rgba(62,224,143,0); }
+  }
+
+  /* ─────────── view containers ─────────── */
+  .views{ flex:1; position:relative; overflow:hidden; }
+  .view{
+    position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
+    padding: 12px 16px 92px;
+    opacity:0; pointer-events:none;
+    transition: opacity 240ms ease;
+    -webkit-overflow-scrolling: touch;
+  }
+  .view.active{ opacity:1; pointer-events:auto; }
+  .view::-webkit-scrollbar{ width:0; }
+
+  /* ─────────── feed ─────────── */
+  .feed-hero{
+    margin: 4px 0 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius);
+    background:
+      radial-gradient(80% 200% at 100% 0%, rgba(167,139,250,0.18), transparent 60%),
+      linear-gradient(135deg, rgba(108,140,255,0.18), rgba(167,139,250,0.08));
+    border:1px solid rgba(167,139,250,0.22);
+    position:relative;
+    overflow:hidden;
+  }
+  .feed-hero::before{
+    content:''; position:absolute; top:-40%; right:-20%; width:240px; height:240px;
+    background: radial-gradient(circle, rgba(167,139,250,0.35), transparent 60%);
+    filter: blur(20px);
+  }
+  .feed-hero .label{ font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#cdb8ff;margin-bottom:8px; position:relative;}
+  .feed-hero h2{ margin:0; font-size:17px; font-weight:600; line-height:1.4; position:relative;}
+  .feed-hero .stats{
+    display:flex; gap:14px; margin-top:14px; position:relative;
+  }
+  .feed-hero .stat{ display:flex; flex-direction:column; gap:2px;}
+  .feed-hero .stat .v{ font-size:18px; font-weight:600; }
+  .feed-hero .stat .v.up{ color:var(--up); }
+  .feed-hero .stat .v.dn{ color:var(--down); }
+  .feed-hero .stat .l{ font-size:10px; color:var(--ink-3); letter-spacing:0.06em; text-transform:uppercase;}
+
+  .feed-section-title{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 6px 4px; margin: 10px 0 4px;
+  }
+  .feed-section-title .h{ font-size:13px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:8px;}
+  .feed-section-title .h::before{
+    content:''; width:3px; height:12px; background: linear-gradient(180deg,var(--primary),var(--accent)); border-radius: 2px;
+  }
+  .feed-section-title .more{ font-size:11px; color:var(--ink-3);}
+
+  .feed-card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor:pointer;
+    transition: transform 160ms, border-color 160ms, background 160ms;
+    position:relative;
+  }
+  .feed-card:active{ transform: scale(0.985); background: var(--surface-2); }
+  .feed-card .row1{
+    display:flex; align-items:center; gap:8px; margin-bottom: 8px;
+  }
+  .feed-card .time{ margin-left:auto; font-size:11px; color:var(--ink-3); font-family:'JetBrains Mono',monospace;}
+  .feed-card h3{
+    margin: 0 0 6px; font-size:15px; font-weight:600; line-height: 1.4;
+    color: var(--ink); text-wrap: pretty;
+  }
+  .feed-card p{
+    margin:0; font-size:13px; color: var(--ink-2); line-height:1.55;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow:hidden;
+  }
+  .feed-card .meta{
+    display:flex; align-items:center; gap:10px; margin-top: 10px;
+    font-size:11px; color: var(--ink-3);
+  }
+  .feed-card .meta .src{ display:inline-flex; align-items:center; gap:4px;}
+  .feed-card .meta .dot{ width:3px;height:3px;border-radius:50%;background:var(--ink-3);}
+  .feed-card .price{
+    margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px;
+    padding:2px 7px; border-radius: 4px;
+  }
+  .feed-card .price.up{ background: var(--up-bg); color: var(--up);}
+  .feed-card .price.dn{ background: var(--down-bg); color: var(--down);}
+
+  .feed-card.highlight{
+    border-color: rgba(167,139,250,0.35);
+    background: linear-gradient(135deg, rgba(167,139,250,0.06), var(--surface) 60%);
+  }
+  .feed-card.highlight::before{
+    content:'⚡ 高压'; position:absolute; top:-8px; left:14px;
+    background: linear-gradient(135deg, var(--watch), #ef9415);
+    color:#1a1208; font-size:10px; font-weight:700; padding:2px 8px;
+    border-radius: 999px; letter-spacing:0.04em;
+  }
+
+  /* ─────────── chip ─────────── */
+  .chip{
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; font-weight:500;
+    padding: 3px 8px; border-radius: 6px;
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:0.02em;
+  }
+  .chip .dot{ width:5px;height:5px;border-radius:50%; }
+  .chip.hk{ color:var(--hk); background:var(--hk-bg);} .chip.hk .dot{background:var(--hk);}
+  .chip.a{ color:var(--a); background:var(--a-bg);} .chip.a .dot{background:var(--a);}
+  .chip.us{ color:var(--us); background:var(--us-bg);} .chip.us .dot{background:var(--us);}
+  .chip.etf{ color:var(--etf); background:var(--etf-bg);} .chip.etf .dot{background:var(--etf);}
+  .chip.watch{ color:var(--watch); background:var(--watch-bg);} .chip.watch .dot{background:var(--watch);}
+
+  /* loading sentinel */
+  .sentinel{
+    text-align:center; padding: 20px 0;
+    font-size:11px; color: var(--ink-3); letter-spacing: 0.18em;
+  }
+  .sentinel .spinner{
+    display:inline-block; width:14px;height:14px; margin-right:8px;
+    border:2px solid var(--ink-3); border-top-color: var(--accent);
+    border-radius:50%; animation: spin 0.8s linear infinite; vertical-align:-2px;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+
+  /* ─────────── watchlist (panorama) ─────────── */
+  .summary-grid{
+    display:grid; grid-template-columns: repeat(2,1fr); gap:10px;
+    margin: 4px 0 14px;
+  }
+  .summary-card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .summary-card .label{ font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);}
+  .summary-card .value{ font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:600; margin-top:4px;letter-spacing:-0.01em;}
+  .summary-card .value.up{ color:var(--up);}
+  .summary-card .value.dn{ color:var(--down);}
+  .summary-card .sub{ font-size:11px; color:var(--ink-2); margin-top:3px;}
+
+  .tabs-wrap{
+    margin: 4px -16px 12px;
+    padding: 0 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .tabs-wrap::-webkit-scrollbar{ display:none;}
+  .tabs{
+    display:inline-flex; gap:6px;
+    padding: 4px;
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius: 12px;
+  }
+  .tab{
+    padding: 8px 14px; font-size:13px; font-weight:500;
+    color: var(--ink-2); cursor:pointer; white-space:nowrap;
+    border-radius: 8px;
+    transition: background 200ms, color 200ms;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab .cnt{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(255,255,255,0.05); color: var(--ink-3);
+  }
+  .tab.active{
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color:#fff; box-shadow: 0 4px 12px rgba(108,140,255,0.3);
+  }
+  .tab.active .cnt{ background: rgba(255,255,255,0.2); color:#fff;}
+
+  .stock-list{ display:flex; flex-direction:column; gap:8px;}
+  .stock-item{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items:center;
+    cursor:pointer;
+    transition: transform 160ms, border-color 160ms, background 160ms;
+  }
+  .stock-item:active{ transform: scale(0.985); background: var(--surface-2); }
+  .stock-item .left{ min-width:0; }
+  .stock-item .name-row{ display:flex; align-items:center; gap:8px; margin-bottom: 4px;}
+  .stock-item .name{ font-size:15px; font-weight:600; color: var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .stock-item .code{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-3); letter-spacing:0.04em;}
+  .stock-item .right{ display:flex; flex-direction:column; align-items:flex-end; gap:3px;}
+  .stock-item .price{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600;}
+  .stock-item .pct{
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500;
+    padding: 2px 7px; border-radius: 4px; min-width: 64px; text-align:center;
+  }
+  .stock-item .pct.up{ background: var(--up-bg); color: var(--up);}
+  .stock-item .pct.dn{ background: var(--down-bg); color: var(--down);}
+  .stock-item .spark{ flex-shrink:0;}
+
+  .stock-item.flash-up{ animation: flashUp 800ms; }
+  .stock-item.flash-dn{ animation: flashDn 800ms; }
+  @keyframes flashUp{ 0%{ background: var(--up-bg);} 100%{ background: var(--surface);} }
+  @keyframes flashDn{ 0%{ background: var(--down-bg);} 100%{ background: var(--surface);} }
+
+  .empty{
+    padding: 60px 20px; text-align:center;
+    color:var(--ink-3); font-size:13px;
+  }
+
+  /* ─────────── bottom nav ─────────── */
+  .bottom-nav{
+    position:absolute; left:0; right:0; bottom:0;
+    height: 76px;
+    padding: 8px 18px calc(env(safe-area-inset-bottom, 0) + 12px);
+    background: linear-gradient(180deg, rgba(11,18,32,0.85), rgba(7,12,24,0.98));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(36,51,83,0.5);
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    z-index: 6;
+  }
+  .nav-item{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 2px; padding: 6px 8px;
+    border-radius: 12px;
+    cursor:pointer;
+    color: var(--ink-3);
+    font-size: 11px; font-weight: 500;
+    transition: color 200ms, background 200ms;
+    position:relative;
+  }
+  .nav-item .icn{ font-size: 20px; line-height: 1; }
+  .nav-item.active{
+    color: var(--ink);
+    background: linear-gradient(135deg, rgba(108,140,255,0.12), rgba(167,139,250,0.08));
+  }
+  .nav-item.active::before{
+    content:''; position:absolute; top: -1px; left: 30%; right:30%; height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 0 0 2px 2px;
+  }
+
+  /* ─────────── detail page ─────────── */
+  .detail{
+    position:absolute; inset:0;
+    background: linear-gradient(180deg,#0b1220, #0e1832);
+    transform: translateX(100%);
+    transition: transform 320ms cubic-bezier(.2,.8,.2,1);
+    display:flex; flex-direction:column;
+    z-index: 20;
+  }
+  .detail.open{ transform: translateX(0); }
+  .detail-header{
+    padding: 14px 16px 12px;
+    display:flex; align-items:center; gap:12px;
+    background: linear-gradient(180deg, rgba(11,18,32,0.95), rgba(11,18,32,0.7));
+    backdrop-filter: blur(12px);
+    border-bottom:1px solid rgba(36,51,83,0.5);
+    flex-shrink:0;
+  }
+  .back-btn{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink); cursor:pointer;
+    width: 36px; height: 36px; border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 16px;
+  }
+  .back-btn:active{ transform: scale(0.92); background: var(--surface-2);}
+  .detail-header .info{ flex:1; min-width:0;}
+  .detail-header .name{ font-size:17px; font-weight:600; line-height:1.2;}
+  .detail-header .code{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-3); margin-top:2px; letter-spacing: 0.04em;}
+  .detail-header .name-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+
+  .detail-body{ flex:1; overflow-y:auto; overflow-x:hidden; padding: 14px 16px 30px;}
+  .detail-body::-webkit-scrollbar{ width:0;}
+
+  .price-block{
+    padding: 18px 18px 16px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--line);
+    margin-bottom: 14px;
+    position:relative; overflow:hidden;
+  }
+  .price-block.up{ border-color: rgba(62,224,143,0.25);}
+  .price-block.dn{ border-color: rgba(255,93,108,0.25);}
+  .price-block::after{
+    content:''; position:absolute; right:-30px; top:-30px; width: 180px; height:180px; border-radius:50%;
+    background: radial-gradient(circle, rgba(62,224,143,0.12), transparent 60%);
+    pointer-events:none;
+  }
+  .price-block.dn::after{
+    background: radial-gradient(circle, rgba(255,93,108,0.12), transparent 60%);
+  }
+  .price-block .row{display:flex; align-items:flex-end; gap:14px; position:relative;}
+  .price-block .last{ font-family:'JetBrains Mono',monospace; font-size: 36px; font-weight: 600; letter-spacing:-0.02em; line-height:1;}
+  .price-block .last.up{color:var(--up);} .price-block .last.dn{color:var(--down);}
+  .price-block .delta{
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500;
+    padding: 4px 10px; border-radius: 6px;
+    margin-bottom: 4px;
+  }
+  .price-block .delta.up{ background: var(--up-bg); color: var(--up);}
+  .price-block .delta.dn{ background: var(--down-bg); color: var(--down);}
+  .price-block .stats-row{
+    margin-top: 14px; display:grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    padding-top: 14px; border-top: 1px dashed var(--line);
+    position:relative;
+  }
+  .price-block .s{ display:flex; flex-direction:column; gap:2px;}
+  .price-block .s .l{ font-size:10px; color:var(--ink-3); letter-spacing: 0.05em;}
+  .price-block .s .v{ font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink); font-weight:500;}
+
+  .section{
+    margin-top: 18px;
+  }
+  .section-h{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 10px;
+  }
+  .section-h .t{ font-size:14px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:8px;}
+  .section-h .t::before{
+    content:''; width:3px; height: 13px; background: linear-gradient(180deg,var(--primary),var(--accent)); border-radius: 2px;
+  }
+  .section-h .meta{ font-size:11px; color:var(--ink-3);}
+
+  /* posts list */
+  .posts{ display:flex; flex-direction:column; gap:8px;}
+  .post{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .post .author{
+    display:flex; align-items:center; gap:8px; margin-bottom: 6px;
+  }
+  .post .avatar{
+    width:24px; height:24px; border-radius:50%;
+    background: linear-gradient(135deg,#6c8cff,#a78bfa);
+    color:#fff; font-size:11px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .post .nm{ font-size:12px; font-weight:500; color: var(--ink);}
+  .post .when{ font-size:11px; color: var(--ink-3); margin-left:auto;}
+  .post .body{ font-size:13px; color: var(--ink-2); line-height:1.6;}
+  .post .react{
+    display:flex; gap:14px; margin-top:8px;
+    font-size:11px; color: var(--ink-3);
+  }
+
+  /* AI workspace */
+  .workspace{
+    background: linear-gradient(135deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    position:relative;
+  }
+  .workspace .hint{ font-size:12px; color:var(--ink-2); line-height:1.55; margin-bottom:10px;}
+  .workspace .hint b{ color: var(--ink);}
+  .workspace textarea{
+    width: 100%; min-height: 110px; resize: vertical;
+    background: var(--bg-1); border: 1px solid var(--line);
+    color: var(--ink); border-radius: 10px; padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6;
+    font-feature-settings: "tnum";
+  }
+  .workspace textarea:focus{ outline: none; border-color: var(--primary); }
+  .workspace textarea::placeholder{ color:var(--ink-3); }
+
+  .preset-row{ display:flex; flex-wrap:wrap; gap: 6px; margin-top: 8px; }
+  .preset{
+    font-size: 11px; color: var(--ink-2);
+    padding: 5px 9px; border-radius: 999px;
+    background: rgba(108,140,255,0.08); border: 1px solid rgba(108,140,255,0.2);
+    cursor: pointer; transition: background 160ms;
+  }
+  .preset:active{ background: rgba(108,140,255,0.18);}
+
+  .ai-btn{
+    margin-top: 12px;
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff; border: none; cursor: pointer;
+    padding: 13px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 20px rgba(108,140,255,0.25);
+    transition: transform 120ms;
+  }
+  .ai-btn:active{ transform: scale(0.985); }
+  .ai-btn:disabled{ opacity: 0.6; cursor: not-allowed;}
+  .ai-btn .pulseDot{
+    width:6px;height:6px;border-radius:50%; background:#fff;
+    animation: dotpulse 1s infinite;
+  }
+  @keyframes dotpulse{ 0%,100%{ opacity:0.3;} 50%{ opacity:1;}}
+
+  /* AI result */
+  .ai-result{
+    margin-top: 14px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(62,224,143,0.3);
+    background:
+      linear-gradient(135deg, rgba(62,224,143,0.08), rgba(34,211,238,0.05));
+    padding: 14px 16px;
+    display:none;
+    position:relative;
+  }
+  .ai-result.show{ display:block; animation: fadeUp 360ms ease;}
+  @keyframes fadeUp{ from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);}}
+  .ai-result .head{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+    font-size:11px; color: var(--up); letter-spacing:0.06em; text-transform:uppercase; font-weight:600;
+  }
+  .ai-result .head .ai-icon{
+    width:20px; height:20px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--up), #22d3ee);
+    display:flex; align-items:center; justify-content:center;
+    color:#0b1220; font-size:11px; font-weight:700;
+  }
+  .ai-result .head .when{ margin-left:auto; color:var(--ink-3); font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:none; letter-spacing:0;}
+  .ai-result .summary{ font-size:13px; line-height:1.65; color: var(--ink); text-wrap: pretty;}
+  .ai-result .summary b{ color: var(--up); font-weight:600;}
+  .ai-result .data-grid{
+    margin-top: 10px;
+    display:grid; grid-template-columns: 1fr 1fr; gap:6px;
+  }
+  .ai-result .d{
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .ai-result .d .l{ font-size:10px; color: var(--ink-3); letter-spacing: 0.06em; text-transform:uppercase;}
+  .ai-result .d .v{ font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; margin-top:2px; color: var(--ink);}
+  .ai-result .d .v.up{ color: var(--up);} .ai-result .d .v.dn{ color: var(--down);}
+  .ai-result ul.points{
+    margin: 10px 0 0; padding-left: 0; list-style: none;
+    font-size: 12.5px; line-height: 1.65; color: var(--ink-2);
+  }
+  .ai-result ul.points li{
+    padding: 4px 0 4px 18px; position: relative;
+  }
+  .ai-result ul.points li::before{
+    content:''; position: absolute; left: 0; top: 11px;
+    width: 8px; height: 1px; background: var(--up);
+  }
+
+  .ai-result.loading{
+    border-color: rgba(108,140,255,0.3);
+    background: linear-gradient(135deg, rgba(108,140,255,0.08), rgba(167,139,250,0.05));
+  }
+  .ai-result.loading .head{ color: var(--primary);}
+  .ai-result.loading .head .ai-icon{ background: linear-gradient(135deg, var(--primary), var(--accent));}
+
+  .skeleton{
+    height: 12px; border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    margin-bottom: 8px;
+  }
+  @keyframes shimmer{ from{ background-position: 200% 0;} to{ background-position: -200% 0;}}
+
+  /* ─────────── utilities ─────────── */
+  .arrow{ display:inline-block; width:0; height:0; vertical-align: 1px;}
+  .arrow.up{ border:4px solid transparent; border-bottom-color: currentColor; border-top:0;}
+  .arrow.dn{ border:4px solid transparent; border-top-color: currentColor; border-bottom:0;}
+
+  /* desktop adjustments */
+  @media (min-width: 600px){
+    body{ overflow:auto; padding: 20px; }
+    #app{ height: calc(100vh - 40px); height: calc(100dvh - 40px); border-radius: 24px; border:1px solid var(--line); overflow:hidden;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- header -->
+  <div class="topbar">
+    <div class="title">
+      <h1 id="appTitle">高压信号流</h1>
+      <div class="sub" id="appSub">76 标的 · 严守能力圈</div>
+    </div>
+    <div class="pulse-wrap"><span class="pulse"></span><span id="liveText">实时</span></div>
+  </div>
+
+  <!-- view container -->
+  <div class="views">
+
+    <!-- VIEW 1: Feed -->
+    <div class="view active" id="viewFeed">
+      <div class="feed-hero">
+        <div class="label">TODAY · MAY 06 · 2026</div>
+        <h2 id="heroTitle">三只翻倍标的发出新信号<br/>钨 / 锂 / 半导体板块继续主导</h2>
+        <div class="stats">
+          <div class="stat"><span class="v up" id="heroUp">+1.43%</span><span class="l">组合净值</span></div>
+          <div class="stat"><span class="v" id="heroSignals">12</span><span class="l">今日信号</span></div>
+          <div class="stat"><span class="v" id="heroAlert">3</span><span class="l">高压预警</span></div>
+        </div>
+      </div>
+
+      <div class="feed-section-title">
+        <div class="h">最新动态</div>
+        <div class="more">仅显示自选 · 76</div>
+      </div>
+
+      <div id="feedList"></div>
+
+      <div class="sentinel" id="sentinel"><span class="spinner"></span>加载更多 · 仅限自选股范围</div>
+    </div>
+
+    <!-- VIEW 2: Watchlist -->
+    <div class="view" id="viewWatch">
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="label">总持仓</div>
+          <div class="value" id="wTotal">76</div>
+          <div class="sub">分布于 5 个分组</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">日内净涨幅</div>
+          <div class="value up" id="wNet">+1.43%</div>
+          <div class="sub" id="wRatio">42 涨 · 28 跌 · 6 平</div>
+        </div>
+      </div>
+
+      <div class="tabs-wrap"><div class="tabs" id="tabs"></div></div>
+
+      <div class="stock-list" id="stockList"></div>
+    </div>
+
+  </div>
+
+  <!-- bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="navFeed" data-view="Feed">
+      <span class="icn">⚡</span>
+      <span>信号流</span>
+    </div>
+    <div class="nav-item" id="navWatch" data-view="Watch">
+      <span class="icn">📊</span>
+      <span>自选全景</span>
+    </div>
+  </div>
+
+  <!-- DETAIL page -->
+  <div class="detail" id="detail">
+    <div class="detail-header">
+      <button class="back-btn" id="backBtn" aria-label="返回">←</button>
+      <div class="info">
+        <div class="name-row">
+          <span class="name" id="dName">—</span>
+          <span class="chip" id="dChip"><span class="dot"></span>—</span>
+        </div>
+        <div class="code mono" id="dCode">—</div>
+      </div>
+    </div>
+
+    <div class="detail-body">
+
+      <div class="price-block" id="dPriceBlock">
+        <div class="row">
+          <span class="last mono" id="dLast">—</span>
+          <span class="delta" id="dDelta">—</span>
+        </div>
+        <div class="stats-row">
+          <div class="s"><span class="l">开盘</span><span class="v" id="dOpen">—</span></div>
+          <div class="s"><span class="l">最高</span><span class="v" id="dHigh">—</span></div>
+          <div class="s"><span class="l">最低</span><span class="v" id="dLow">—</span></div>
+          <div class="s"><span class="l">成交量</span><span class="v" id="dVol">—</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-h">
+          <div class="t">市场资讯 · 雪球热帖</div>
+          <div class="meta" id="postCount">—</div>
+        </div>
+        <div class="posts" id="dPosts"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-h">
+          <div class="t">我的专属研判</div>
+          <div class="meta">逻辑沉淀 · 不导出</div>
+        </div>
+
+        <div class="workspace">
+          <div class="hint">
+            写下当前的<b>核心推演</b>或<b>关键存疑点</b>。AI 会基于该标的最新数据进行<b>定向检索</b>，仅回填客观事实，不下结论。
+          </div>
+          <textarea id="userNote" placeholder="// 例如：&#10;// 1. 钨精矿长单价格是否继续上调？&#10;// 2. 库存周转天数是否异常？&#10;// 3. Q2 产能锁定情况？"></textarea>
+
+          <div class="preset-row" id="presets"></div>
+
+          <button class="ai-btn" id="aiBtn">
+            <span>🤖</span><span>召唤 AI 深度调研</span>
+          </button>
+
+          <div class="ai-result" id="aiResult"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================================
+   DATA — 严格只用 76 自选股
+   ========================================================================= */
+const RAW = {
+  "关注": [
+    {"symbol":"03933","name":"联邦制药","exchange":"HK"},
+    {"symbol":"06100","name":"同道猎聘","exchange":"HK"},
+    {"symbol":"07709","name":"XL二南方海力士","exchange":"HK"},
+    {"symbol":"09696","name":"天齐锂业","exchange":"HK"},
+    {"symbol":"01772","name":"赣锋锂业","exchange":"HK"},
+    {"symbol":"09988","name":"阿里巴巴-W","exchange":"HK"}
+  ],
+  "沪深": [
+    {"symbol":"SH688017","name":"绿的谐波","exchange":"SH"},
+    {"symbol":"SZ300769","name":"德方纳米","exchange":"SZ"},
+    {"symbol":"SZ301358","name":"湖南裕能","exchange":"SZ"},
+    {"symbol":"SZ300073","name":"当升科技","exchange":"SZ"},
+    {"symbol":"SH688116","name":"天奈科技","exchange":"SH"},
+    {"symbol":"SH603026","name":"石大胜华","exchange":"SH"},
+    {"symbol":"SZ300905","name":"宝丽迪","exchange":"SZ"},
+    {"symbol":"SZ000858","name":"五粮液","exchange":"SZ"},
+    {"symbol":"SH688333","name":"铂力特","exchange":"SH"},
+    {"symbol":"SH688498","name":"源杰科技","exchange":"SH"},
+    {"symbol":"SZ200596","name":"古井贡B","exchange":"SZ"},
+    {"symbol":"SH688808","name":"联讯仪器","exchange":"SH"},
+    {"symbol":"SH600489","name":"中金黄金","exchange":"SH"},
+    {"symbol":"SZ000651","name":"格力电器","exchange":"SZ"},
+    {"symbol":"SZ002009","name":"天奇股份","exchange":"SZ"},
+    {"symbol":"SZ002756","name":"永兴材料","exchange":"SZ"},
+    {"symbol":"SZ300057","name":"万顺新材","exchange":"SZ"},
+    {"symbol":"SZ002992","name":"宝明科技","exchange":"SZ"},
+    {"symbol":"SZ002812","name":"恩捷股份","exchange":"SZ"},
+    {"symbol":"SH688353","name":"华盛锂电","exchange":"SH"},
+    {"symbol":"SZ159992","name":"创新药ETF银华","exchange":"SZ","etf":true},
+    {"symbol":"SZ002705","name":"新宝股份","exchange":"SZ"},
+    {"symbol":"SH601020","name":"华钰矿业","exchange":"SH"},
+    {"symbol":"SZ002378","name":"章源钨业","exchange":"SZ"},
+    {"symbol":"SZ002738","name":"中矿资源","exchange":"SZ"},
+    {"symbol":"SZ000603","name":"盛达资源","exchange":"SZ"},
+    {"symbol":"SZ000657","name":"中钨高新","exchange":"SZ"},
+    {"symbol":"SZ002842","name":"翔鹭钨业","exchange":"SZ"}
+  ],
+  "港股": [
+    {"symbol":"00990","name":"至源控股","exchange":"HK"},
+    {"symbol":"01888","name":"建滔积层板","exchange":"HK"},
+    {"symbol":"02507","name":"西锐","exchange":"HK"},
+    {"symbol":"06100","name":"同道猎聘","exchange":"HK"},
+    {"symbol":"01024","name":"快手-W","exchange":"HK"},
+    {"symbol":"09992","name":"泡泡玛特","exchange":"HK"},
+    {"symbol":"07747","name":"南方两倍做多三星电子","exchange":"HK","etf":true},
+    {"symbol":"00833","name":"华讯","exchange":"HK"},
+    {"symbol":"02233","name":"西部水泥","exchange":"HK"},
+    {"symbol":"07709","name":"XL二南方海力士","exchange":"HK","etf":true},
+    {"symbol":"09696","name":"天齐锂业","exchange":"HK"},
+    {"symbol":"07489","name":"岚图汽车","exchange":"HK"},
+    {"symbol":"01114","name":"华晨中国","exchange":"HK"},
+    {"symbol":"01772","name":"赣锋锂业","exchange":"HK"},
+    {"symbol":"01911","name":"华兴资本控股","exchange":"HK"},
+    {"symbol":"00743","name":"亚洲水泥(中国)","exchange":"HK"},
+    {"symbol":"03933","name":"联邦制药","exchange":"HK"},
+    {"symbol":"02400","name":"心动公司","exchange":"HK"},
+    {"symbol":"00586","name":"海螺创业","exchange":"HK"},
+    {"symbol":"09926","name":"康方生物","exchange":"HK"},
+    {"symbol":"01797","name":"东方甄选","exchange":"HK"},
+    {"symbol":"09890","name":"贪玩","exchange":"HK"},
+    {"symbol":"01691","name":"JS环球生活","exchange":"HK"},
+    {"symbol":"00819","name":"天能动力","exchange":"HK"},
+    {"symbol":"00700","name":"腾讯控股","exchange":"HK"},
+    {"symbol":"09988","name":"阿里巴巴-W","exchange":"HK"}
+  ],
+  "美股": [
+    {"symbol":"AXTI","name":"AXT","exchange":"NASDAQ"},
+    {"symbol":"AMZN","name":"亚马逊","exchange":"NASDAQ"},
+    {"symbol":"NFLX","name":"奈飞","exchange":"NASDAQ"},
+    {"symbol":"NOW","name":"ServiceNow","exchange":"NYSE"},
+    {"symbol":"DRAM","name":"Roundhill Memory ETF","exchange":"BATS","etf":true},
+    {"symbol":"META","name":"Meta","exchange":"NASDAQ"},
+    {"symbol":"TSLA","name":"特斯拉","exchange":"NASDAQ"},
+    {"symbol":"NAIL","name":"住房建设每日3倍做多","exchange":"ARCA","etf":true},
+    {"symbol":"NVDA","name":"英伟达","exchange":"NASDAQ"},
+    {"symbol":"MU","name":"美光科技","exchange":"NASDAQ"},
+    {"symbol":"NVO","name":"诺和诺德","exchange":"NYSE"},
+    {"symbol":"FTXL","name":"纳斯达克半导体ETF","exchange":"NASDAQ","etf":true},
+    {"symbol":"EWY","name":"韩国ETF","exchange":"ARCA","etf":true},
+    {"symbol":"TSM","name":"台积电","exchange":"NYSE"},
+    {"symbol":"AGQ","name":"白银2X做多","exchange":"ARCA","etf":true},
+    {"symbol":"INTC","name":"英特尔","exchange":"NASDAQ"},
+    {"symbol":"SMH","name":"半导体ETF","exchange":"NASDAQ","etf":true},
+    {"symbol":"GOOG","name":"谷歌C","exchange":"NASDAQ"},
+    {"symbol":"AVGO","name":"博通","exchange":"NASDAQ"},
+    {"symbol":"AAPL","name":"苹果","exchange":"NASDAQ"}
+  ],
+  "翻倍": [
+    {"symbol":"SZ000657","name":"中钨高新","exchange":"SZ"},
+    {"symbol":"00743","name":"亚洲水泥(中国)","exchange":"HK"},
+    {"symbol":"03933","name":"联邦制药","exchange":"HK"}
+  ]
+};
+
+// 模拟信号库 — 全部锚定到 76 自选股
+const SIGNALS = [
+  {symbol:"SZ000657",title:"钨精矿长单报价 5 月再上调，矿山停产消息持续发酵",summary:"江钨集团最新出厂价上调 3.2%，多家冶炼厂处于满产状态，长协订单延续到 Q3。供给端的物理刚性约束未见松动。",src:"行业研报",time:"08 分钟前",hot:true,pct:3.42},
+  {symbol:"03933",title:"联邦制药 GLP-1 类似物 III 期数据公布，疗效非劣于司美格鲁肽",summary:"公司在港交所披露的临床数据显示，UBT251 治疗肥胖症的 III 期数据达到主要终点；管理层暗示 Q4 启动 BD 谈判。",src:"公司公告",time:"22 分钟前",hot:true,pct:8.92},
+  {symbol:"NVDA",title:"B200 出货量爬坡好于预期，台积电 CoWoS 产能下半年再扩 30%",summary:"产业链调研显示 NVDA 已锁定 2026 全年 CoWoS 产能；HBM3e 由海力士与美光分供。算力卡毛利率维持在 75% 以上。",src:"产业链",time:"35 分钟前",pct:2.15},
+  {symbol:"01772",title:"赣锋锂业控股股东增持 1.2 亿港元 H 股",summary:"创始人李良彬在 7.40 港元附近完成增持，对应市值折让超过 30%。锂价从 7.5 万元/吨企稳反弹，行业出清进入中后段。",src:"公司公告",time:"1 小时前",pct:4.18},
+  {symbol:"07709",title:"HBM 三巨头 Q1 财报全部超预期，海力士份额仍居首",summary:"南方海力士 ETF 二倍做多产品近 5 日成交活跃，海力士 HBM3e 12-Hi 良率突破 80%。整体存储周期上行得到再次确认。",src:"市场观察",time:"1 小时前",hot:true,pct:5.71},
+  {symbol:"00700",title:"腾讯一季度业绩前瞻：游戏 + 视频号广告双轮驱动",summary:"DnF 手游流水维持月均 30 亿+，视频号广告库存释放节奏良好。市场一致预期调整后净利润同比 +18%。",src:"卖方研报",time:"2 小时前",pct:1.32},
+  {symbol:"SZ002378",title:"章源钨业 Q1 净利同比 +245%，钨深加工产品出货创新高",summary:"硬质合金毛利率回升至 28%，公司正在评估新一轮产能扩张。核心矿山保有储量充裕。",src:"业绩预告",time:"2 小时前",pct:6.85},
+  {symbol:"AAPL",title:"Apple Intelligence 中国区落地推迟至 Q3，影响 iPhone 16e 销量",summary:"分析师 Kuo 调低中国区 iPhone 季度出货预期 5-8%；服务收入仍保持双位数增长。",src:"独立分析",time:"3 小时前",pct:-1.24},
+  {symbol:"MU",title:"美光宣布 HBM4 工程样片提前交付，2026 H2 量产",summary:"管理层在最新业绩会上将 HBM TAM 上调至 350 亿美元；核心客户验证进度优于此前指引。",src:"业绩会议",time:"3 小时前",pct:3.78},
+  {symbol:"09696",title:"天齐锂业 SQM 分红落袋 16.7 亿，自由现金流改善",summary:"董事会建议派发 H 股特别股息；锂价在 7 万元/吨企稳后，市场对全年盈利的预期开始向上修正。",src:"公司公告",time:"4 小时前",pct:5.21},
+  {symbol:"TSM",title:"台积电 4 月营收 2823 亿新台币，AI 相关需求推动同比 +52%",summary:"3nm 节点产能利用率维持 100%，2nm 客户验证进度领先。CoWoS 供给紧张程度未缓解。",src:"月度数据",time:"5 小时前",pct:2.04},
+  {symbol:"09992",title:"泡泡玛特海外同店 Q1 同比 +180%，北美门店超 30 家",summary:"海外 GMV 占比提升至 38%；管理层指引全年北美门店扩至 50+。LABUBU IP 衍生周期延长。",src:"调研纪要",time:"6 小时前",pct:4.62},
+  {symbol:"SZ002738",title:"中矿资源铯铷盐价格再次提价，全球市占率超 80%",summary:"小金属端的隐形冠军；锂业务受到价格修复带动，估值有望从锂矿股切换到稀有金属龙头。",src:"行业纪要",time:"7 小时前",pct:3.95},
+  {symbol:"SH688498","title":"源杰科技 800G 硅光芯片获海外大客户订单","summary":"产业链确认 800G 硅光发射模块已小批量供货某北美云大厂；公司硅光产能进入快速放量阶段。","src":"产业链","time":"8 小时前","pct":7.21},
+  {symbol:"AVGO",title:"博通 AI 营收指引上调，定制 ASIC 业务超 100 亿美元",summary:"3nm 定制 ASIC 项目客户由 2 家扩展到 4 家；VMware 整合带来的运营效率持续释放。",src:"业绩指引",time:"昨日",pct:1.85},
+  {symbol:"SZ002756",title:"永兴材料锂矿自给率提升至 100%，成本优势再扩大",summary:"化山瓷石矿改扩建完成，碳酸锂完全成本降至 4.2 万元/吨；不锈钢业务现金流稳定。",src:"调研纪要",time:"昨日",pct:2.35},
+  {symbol:"SH600489",title:"中金黄金 Q1 净利同比 +63%，金价突破 2400 美元",summary:"避险情绪与央行购金需求双重支撑；公司国内自有矿山保有储量持续提升。",src:"业绩快报",time:"昨日",pct:3.18},
+  {symbol:"01024",title:"快手电商 Q1 GMV 增速重回 25%+",summary:"管理层提到广告变现率仍有提升空间；本地生活进入快速增长期。",src:"业绩预览",time:"昨日",pct:2.74},
+];
+
+const THESES = {
+  "中钨高新":"卖铲子逻辑 / 物理确定性资产",
+  "联邦制药":"GLP-1 双引擎 + 抗生素现金流",
+  "赣锋锂业":"锂价见底 / 海外资源最完整",
+  "天齐锂业":"SQM分红 + 锂价反弹双重弹性",
+  "腾讯控股":"游戏回暖 + 微信电商估值有底",
+  "阿里巴巴-W":"云 + 国际电商重启增长",
+  "英伟达":"AI算力垄断 / B200 出货爬坡",
+  "美光科技":"HBM需求确定性 / 周期反转",
+  "台积电":"3nm/2nm 节点优势 / AI涨价",
+  "苹果":"服务收入上行 / AI落地待催化",
+  "中矿资源":"铯铷小金属龙头 + 锂业务低估",
+  "永兴材料":"自有锂矿 / 不锈钢现金奶牛",
+  "章源钨业":"钨产业链一体化 / 弹性最大",
+  "XL二南方海力士":"HBM 三巨头之一 / 杠杆",
+  "泡泡玛特":"IP出海加速 / 同店高增",
+  "心动公司":"TapTap 变现 / 新游周期",
+  "源杰科技":"硅光芯片 / 800G 放量",
+  "格力电器":"高股息 + 海外渗透 / 防御",
+  "Meta":"Reels变现 + AI广告效率",
+  "亚马逊":"AWS提速 + 零售利润率改善",
+  "博通":"AI ASIC + VMware 协同",
+  "ServiceNow":"AI workflow 定价权 / 续约 99%",
+  "诺和诺德":"GLP-1 全球供给紧张",
+};
+
+/* =========================================================================
+   utilities
+   ========================================================================= */
+function exClass(s){
+  if(s.etf) return 'etf';
+  if(s.exchange==='HK') return 'hk';
+  if(s.exchange==='SH'||s.exchange==='SZ') return 'a';
+  return 'us';
+}
+function exLabel(s){
+  if(s.etf) return 'ETF';
+  if(s.exchange==='HK') return 'HK';
+  if(s.exchange==='SH') return 'SH';
+  if(s.exchange==='SZ') return 'SZ';
+  if(s.exchange==='NASDAQ') return 'NASDAQ';
+  if(s.exchange==='NYSE') return 'NYSE';
+  if(s.exchange==='ARCA') return 'ARCA';
+  if(s.exchange==='BATS') return 'BATS';
+  return s.exchange;
+}
+function fmtPrice(v){ return v>=1000? v.toFixed(1) : v.toFixed(2); }
+function fmtVol(v){
+  if (v>=1e8) return (v/1e8).toFixed(2)+'亿';
+  if (v>=1e4) return (v/1e4).toFixed(1)+'万';
+  return v.toLocaleString();
+}
+// seeded RNG
+function seed(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return ()=>{ h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+
+const cache = {};
+function buildCache(){
+  const seen = new Set();
+  for(const g of Object.keys(RAW)){
+    for(const s of RAW[g]){
+      if(cache[s.symbol]) continue;
+      const r = seed(s.symbol);
+      let base;
+      if (s.exchange==='HK') base = 8 + r()*180;
+      else if (['NASDAQ','NYSE','ARCA','BATS'].includes(s.exchange)) base = 30 + r()*450;
+      else base = 12 + r()*60;
+      const path=[]; let p=base*(0.8+r()*0.4);
+      for(let i=0;i<14;i++){ p *= 1 + (r()-0.49)*0.045; path.push(p); }
+      const last=path[path.length-1], prev=path[path.length-2];
+      const chg=last-prev, pct=(chg/prev)*100;
+      const open=prev*(1+(r()-0.5)*0.012);
+      const high=Math.max(last,open)*(1+r()*0.022);
+      const low =Math.min(last,open)*(1-r()*0.022);
+      const vol =Math.round(50000+r()*9_500_000);
+      cache[s.symbol] = { ...s, last, chg, pct, open, high, low, vol, path };
+      seen.add(s.symbol);
+    }
+  }
+}
+
+function sparkline(path,w,h,up){
+  const min=Math.min(...path), max=Math.max(...path), span=max-min||1;
+  const pts = path.map((v,i)=>[ (i/(path.length-1))*w, h-((v-min)/span)*(h-2)-1 ]);
+  const d = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const color = up? '#3ee08f' : '#ff5d6c';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="spark">
+    <path d="${d}" stroke="${color}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* =========================================================================
+   state
+   ========================================================================= */
+const state = {
+  view: 'Feed',
+  tab: '关注',
+  feedShown: 0,
+  feedBatch: 6,
+  detailSymbol: null,
+};
+
+/* =========================================================================
+   FEED render
+   ========================================================================= */
+function chipFor(sym){
+  const c = cache[sym];
+  if(!c) return '';
+  return `<span class="chip ${exClass(c)}"><span class="dot"></span>${c.name}</span>`;
+}
+function feedItemHTML(item){
+  const c = cache[item.symbol] || {};
+  const up = (item.pct||0) >= 0;
+  return `
+    <article class="feed-card ${item.hot?'highlight':''}" data-symbol="${item.symbol}">
+      <div class="row1">
+        ${chipFor(item.symbol)}
+        <span class="time mono">${item.time}</span>
+      </div>
+      <h3>${item.title}</h3>
+      <p>${item.summary}</p>
+      <div class="meta">
+        <span class="src">📰 ${item.src}</span>
+        <span class="dot"></span>
+        <span class="mono">${c.symbol||''}</span>
+        <span class="price ${up?'up':'dn'} mono">${up?'+':''}${(item.pct||0).toFixed(2)}%</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderFeed(initial=true){
+  const list = document.getElementById('feedList');
+  if(initial){ list.innerHTML=''; state.feedShown=0; }
+  const next = SIGNALS.slice(state.feedShown, state.feedShown + state.feedBatch);
+  if(!next.length){
+    document.getElementById('sentinel').innerHTML = '<span style="opacity:0.6;">— 已全部加载 · 仅限 76 自选 —</span>';
+    return;
+  }
+  next.forEach(it=>{
+    list.insertAdjacentHTML('beforeend', feedItemHTML(it));
+  });
+  state.feedShown += next.length;
+  list.querySelectorAll('.feed-card').forEach(card=>{
+    if(card.dataset.bound) return;
+    card.dataset.bound = '1';
+    card.addEventListener('click', ()=>{
+      openDetail(card.dataset.symbol);
+    });
+  });
+}
+
+// infinite scroll
+function bindFeedScroll(){
+  const v = document.getElementById('viewFeed');
+  v.addEventListener('scroll', ()=>{
+    const near = v.scrollTop + v.clientHeight >= v.scrollHeight - 120;
+    if(near) renderFeed(false);
+  });
+}
+
+/* =========================================================================
+   WATCHLIST render
+   ========================================================================= */
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  const groups = ['关注','沪深','港股','美股','翻倍'];
+  const counts = {'关注':6,'沪深':28,'港股':26,'美股':20,'翻倍':3};
+  tabs.innerHTML = groups.map(g=>`
+    <div class="tab ${g===state.tab?'active':''}" data-g="${g}">
+      <span>${g}</span><span class="cnt">${counts[g]}</span>
+    </div>
+  `).join('');
+  tabs.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      state.tab = t.dataset.g;
+      tabs.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const list = document.getElementById('stockList');
+      list.style.opacity = '0';
+      setTimeout(()=>{ renderStocks(); list.style.opacity='1'; }, 120);
+    });
+  });
+}
+
+function stockItemHTML(s){
+  const up = s.pct>=0;
+  return `
+    <div class="stock-item" data-symbol="${s.symbol}">
+      <div class="left">
+        <div class="name-row">
+          <span class="name">${s.name}</span>
+          <span class="chip ${exClass(s)}"><span class="dot"></span>${exLabel(s)}</span>
+        </div>
+        <div class="code mono">${s.symbol}${s.etf?' · ETF':''}</div>
+      </div>
+      <div class="right">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="spark">${sparkline(s.path, 56, 22, up)}</span>
+          <span class="price mono ${up?'up':'dn'}" style="color:${up?'var(--up)':'var(--down)'};">${fmtPrice(s.last)}</span>
+        </div>
+        <span class="pct ${up?'up':'dn'} mono">${up?'+':''}${s.pct.toFixed(2)}%</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderStocks(){
+  const list = document.getElementById('stockList');
+  list.style.transition = 'opacity 200ms';
+  const stocks = (RAW[state.tab]||[]).map(s=>cache[s.symbol]).filter(Boolean);
+  if(!stocks.length){ list.innerHTML = '<div class="empty">该分组暂无标的</div>'; return; }
+  list.innerHTML = stocks.map(stockItemHTML).join('');
+  list.querySelectorAll('.stock-item').forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.symbol));
+  });
+}
+
+function refreshSummary(){
+  const all = new Set();
+  for(const g of ['关注','沪深','港股','美股']) for(const s of RAW[g]) all.add(s.symbol);
+  const arr = [...all].map(sy=>cache[sy]).filter(Boolean);
+  const gain = arr.filter(x=>x.pct>0.05).length;
+  const loss = arr.filter(x=>x.pct<-0.05).length;
+  const flat = arr.length - gain - loss;
+  const net  = arr.reduce((a,b)=>a+b.pct,0)/arr.length;
+  document.getElementById('wTotal').textContent = arr.length;
+  const wn = document.getElementById('wNet');
+  wn.textContent = (net>=0?'+':'')+net.toFixed(2)+'%';
+  wn.className = 'value ' + (net>=0?'up':'dn');
+  document.getElementById('wRatio').textContent = `${gain} 涨 · ${loss} 跌 · ${flat} 平`;
+  document.getElementById('heroUp').textContent = (net>=0?'+':'')+net.toFixed(2)+'%';
+  document.getElementById('heroUp').className = 'v ' + (net>=0?'up':'dn');
+  document.getElementById('heroSignals').textContent = SIGNALS.length;
+  document.getElementById('heroAlert').textContent = SIGNALS.filter(s=>s.hot).length;
+}
+
+/* =========================================================================
+   nav switching
+   ========================================================================= */
+function switchView(view){
+  if(state.view===view) return;
+  state.view = view;
+  document.getElementById('viewFeed').classList.toggle('active', view==='Feed');
+  document.getElementById('viewWatch').classList.toggle('active', view==='Watch');
+  document.getElementById('navFeed').classList.toggle('active', view==='Feed');
+  document.getElementById('navWatch').classList.toggle('active', view==='Watch');
+  document.getElementById('appTitle').textContent = view==='Feed'?'高压信号流':'自选全景';
+  document.getElementById('appSub').textContent  = view==='Feed'?'76 标的 · 严守能力圈':'5 个分组 · 完整观测池';
+}
+document.getElementById('navFeed').addEventListener('click', ()=>switchView('Feed'));
+document.getElementById('navWatch').addEventListener('click',()=>switchView('Watch'));
+
+/* =========================================================================
+   DETAIL page
+   ========================================================================= */
+function openDetail(symbol){
+  const s = cache[symbol]; if(!s) return;
+  state.detailSymbol = symbol;
+  const up = s.pct>=0;
+
+  document.getElementById('dName').textContent = s.name;
+  const chip = document.getElementById('dChip');
+  chip.className = 'chip ' + exClass(s);
+  chip.innerHTML = `<span class="dot"></span>${exLabel(s)}`;
+  document.getElementById('dCode').textContent = s.symbol;
+  document.getElementById('dLast').textContent = fmtPrice(s.last);
+  document.getElementById('dLast').className = 'last mono ' + (up?'up':'dn');
+  const delta = document.getElementById('dDelta');
+  delta.className = 'delta ' + (up?'up':'dn');
+  delta.innerHTML = `<span class="arrow ${up?'up':'dn'}"></span> ${up?'+':''}${s.chg.toFixed(2)} &nbsp; ${up?'+':''}${s.pct.toFixed(2)}%`;
+  document.getElementById('dPriceBlock').className = 'price-block ' + (up?'up':'dn');
+  document.getElementById('dOpen').textContent = fmtPrice(s.open);
+  document.getElementById('dHigh').textContent = fmtPrice(s.high);
+  document.getElementById('dLow').textContent  = fmtPrice(s.low);
+  document.getElementById('dVol').textContent  = fmtVol(s.vol);
+
+  // posts (filtered to this symbol; if none, generate plausible 2)
+  const matched = SIGNALS.filter(x=>x.symbol===symbol);
+  const fallback = [
+    { author:'量化逻辑控', when:'2 小时前', body:`${s.name} 当前估值处于近 3 年 ${(20+Math.floor(Math.random()*40))}% 分位，需结合行业景气度交叉验证。`, like: 142 },
+    { author:'产业研究员_K', when:'昨日', body:`持续跟踪 ${s.name} 上下游订单，本周渠道反馈整体保持平稳，未见利空拐点。`, like: 87 },
+  ];
+  const posts = matched.length
+    ? matched.map(m=>({ author:m.src, when:m.time, body:m.summary, like: 80+Math.floor(Math.random()*200)}))
+    : fallback;
+  document.getElementById('postCount').textContent = posts.length + ' 条';
+  const initials = (n)=> (n||'•').slice(0,1);
+  document.getElementById('dPosts').innerHTML = posts.map(p=>`
+    <div class="post">
+      <div class="author">
+        <div class="avatar">${initials(p.author)}</div>
+        <span class="nm">${p.author}</span>
+        <span class="when">${p.when}</span>
+      </div>
+      <div class="body">${p.body}</div>
+      <div class="react"><span>👍 ${p.like}</span><span>💬 ${Math.floor(p.like/4)}</span><span>⭐ ${Math.floor(p.like/8)}</span></div>
+    </div>
+  `).join('');
+
+  // presets specific to symbol thesis
+  const presetsList = buildPresets(s);
+  document.getElementById('presets').innerHTML = presetsList.map(p=>`<span class="preset">${p}</span>`).join('');
+  document.getElementById('presets').querySelectorAll('.preset').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const ta = document.getElementById('userNote');
+      ta.value = (ta.value? ta.value + '\n' : '') + el.textContent;
+      ta.focus();
+    });
+  });
+
+  document.getElementById('userNote').value = '';
+  const ar = document.getElementById('aiResult');
+  ar.classList.remove('show'); ar.innerHTML='';
+
+  document.getElementById('detail').classList.add('open');
+}
+function closeDetail(){
+  document.getElementById('detail').classList.remove('open');
+  state.detailSymbol = null;
+}
+document.getElementById('backBtn').addEventListener('click', closeDetail);
+
+function buildPresets(s){
+  const t = THESES[s.name] || '';
+  const generic = [
+    '当前估值分位是否合理？',
+    '近 1 周资金流向？',
+    '行业景气度变化？',
+  ];
+  if(/钨|矿|资源|金/.test(s.name)) return ['长单价格走势','库存周转天数','产能锁定情况',...generic];
+  if(/锂/.test(s.name))            return ['碳酸锂价格','自有矿成本','库存天数','行业出清进度'];
+  if(/海力士|半导体|存储|芯片|英伟达|台积|博通|美光|英特尔|科技|硅光|光通信/.test(s.name))
+                                    return ['HBM 产能锁定','晶圆代工价','客户验证进度','库存周期位置'];
+  if(/制药|医药|生物|创新药/.test(s.name)) return ['临床进度','医保谈判预期','产能扩张计划','BD 谈判'];
+  if(/水泥|矿|钨/.test(s.name))    return ['区域价格','产能利用率','环保政策'];
+  return [...generic, '财报最新拐点'];
+}
+
+/* =========================================================================
+   AI workflow — 真实调用 + 模拟兜底
+   ========================================================================= */
+const aiBtn = document.getElementById('aiBtn');
+aiBtn.addEventListener('click', runAI);
+
+function runAI(){
+  const note = document.getElementById('userNote').value.trim();
+  const s = cache[state.detailSymbol]; if(!s) return;
+  if(!note){
+    const ta = document.getElementById('userNote');
+    ta.placeholder = '⚠️ 请先输入推演逻辑或问题，AI 将围绕你的提问进行定向检索…';
+    ta.focus();
+    return;
+  }
+  showLoading();
+  // 优先调用真实 Claude；失败回退到模拟
+  callClaude(s, note).then(renderAIResult).catch(()=> renderAIResult(simulateAI(s, note)));
+}
+
+function showLoading(){
+  const ar = document.getElementById('aiResult');
+  ar.classList.add('show','loading');
+  ar.innerHTML = `
+    <div class="head">
+      <div class="ai-icon">AI</div>
+      <span>正在调用大模型 · 定向检索中</span>
+      <span class="when mono">${new Date().toTimeString().slice(0,8)}</span>
+    </div>
+    <div class="skeleton" style="width:90%"></div>
+    <div class="skeleton" style="width:75%"></div>
+    <div class="skeleton" style="width:60%"></div>
+    <div class="skeleton" style="width:80%"></div>
+  `;
+  aiBtn.disabled = true;
+  aiBtn.innerHTML = '<span class="pulseDot"></span><span>调研中…</span>';
+}
+
+async function callClaude(s, note){
+  if(!window.claude || !window.claude.complete) throw new Error('no-claude');
+  const prompt = `你是一名严谨的卖方研究助理，基于公开信息为投资人提供"客观事实速查"。请围绕「${s.name}（${s.symbol}）」标的，针对以下用户提问进行简短结构化回答（不下结论、不做投资建议，只罗列事实与口径）：
+
+用户提问：${note}
+
+严格按以下 JSON 格式输出，不要附加其他文字：
+{
+  "summary": "一句话总结当前事实（<=60 字）",
+  "metrics": [
+    {"label":"指标名（中文，<=8字）","value":"数值或区间","trend":"up|dn|flat"}
+  ],
+  "points": ["要点 1（<=40 字）","要点 2","要点 3","要点 4"],
+  "caveat": "口径与不确定性提示（<=40 字）"
+}
+metrics 至少 4 项；points 至少 3 项。`;
+  const text = await window.claude.complete(prompt);
+  const m = text.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('bad-format');
+  return JSON.parse(m[0]);
+}
+
+function simulateAI(s, note){
+  const r = seed(s.symbol + note.length);
+  // theme-aware
+  let metrics, points, summary, caveat;
+  if (/钨|矿/.test(s.name)){
+    metrics = [
+      {label:'长单价',  value:'+3.2% 环比', trend:'up'},
+      {label:'库存天数',value:'14 天', trend:'dn'},
+      {label:'产能锁定',value:'Q3 满产', trend:'up'},
+      {label:'冶炼利润',value:'1.8 万/吨', trend:'up'},
+    ];
+    points = [
+      '矿端供给受环保停产影响，未见放松',
+      '硬质合金毛利率回升至 28%',
+      '下游军工、刀具订单延续到 Q3',
+      '尾矿库扩建项目预计 2027 投产'
+    ];
+    summary = '钨产业链供需偏紧未发生反转，长单价格继续上行。';
+    caveat = '价格基于行业协会口径；存货数据为公司最新季报。';
+  } else if (/锂/.test(s.name)){
+    metrics = [
+      {label:'碳酸锂价',value:'7.1 万元/吨', trend:'up'},
+      {label:'库存天数',value:'21 天', trend:'flat'},
+      {label:'自给率',  value:'84%', trend:'up'},
+      {label:'完全成本',value:'4.2 万/吨', trend:'dn'},
+    ];
+    points = [
+      '锂价从 7 万企稳反弹，行业进入出清后段',
+      'SQM 分红落袋显著改善现金流',
+      '海外资源版图保持完整',
+      '盐湖项目进度优于此前指引'
+    ];
+    summary = '锂价底部企稳，公司成本曲线左移，盈利弹性放大。';
+    caveat = '锂价为电池级现货 SMM 口径；自给率含权益矿。';
+  } else if (/海力士|半导体|英伟达|台积|存储|HBM|博通|美光|芯片|硅光/.test(s.name)){
+    metrics = [
+      {label:'HBM 占比',value:'52%', trend:'up'},
+      {label:'CoWoS 产能',value:'+30% H2', trend:'up'},
+      {label:'毛利率',  value:'74.5%', trend:'up'},
+      {label:'客户数',  value:'4 家定制', trend:'up'},
+    ];
+    points = [
+      '先进封装产能持续吃紧，需求被锁定',
+      'HBM3e 12-Hi 良率突破 80%',
+      'AI 客户对单价不敏感，议价权延续',
+      '应用层竞争未传导至硬件层'
+    ];
+    summary = 'AI 算力基础设施层议价权稳固，HBM/CoWoS 供给紧张未变。';
+    caveat = '良率与产能数据来自产业链调研，存在 ±5% 波动。';
+  } else if (/制药|生物|医药/.test(s.name)){
+    metrics = [
+      {label:'临床进度',value:'III 期达终点', trend:'up'},
+      {label:'BD 收入',value:'2.4 亿美元', trend:'up'},
+      {label:'医保覆盖',value:'已纳入', trend:'flat'},
+      {label:'毛利率',  value:'63%', trend:'up'},
+    ];
+    points = [
+      'GLP-1 类似物 III 期主要终点达成',
+      '抗生素业务现金流稳定',
+      '管理层暗示 Q4 启动 BD 谈判',
+      '国内审批节奏快于海外同类'
+    ];
+    summary = '管线推进顺利，BD 谈判窗口临近，估值有重估空间。';
+    caveat = '临床数据基于公司公告；BD 信息为管理层定性表述。';
+  } else {
+    metrics = [
+      {label:'营收增速',value:'+12.4% YoY', trend:'up'},
+      {label:'净利率',  value:'18.7%', trend:'up'},
+      {label:'估值分位',value:'近 3 年 35%', trend:'flat'},
+      {label:'机构持仓',value:'+2.1pct', trend:'up'},
+    ];
+    points = [
+      '基本面未见原商业模式破坏拐点',
+      '现金流维持稳定生成',
+      '行业 Beta 与 Alpha 双重支撑',
+      '估值未显著偏离合理区间'
+    ];
+    summary = '基本面稳健，估值与业绩匹配，未见显著拐点信号。';
+    caveat = '指标为最新季报口径；估值参考过去 3 年区间。';
+  }
+  return { summary, metrics, points, caveat };
+}
+
+function renderAIResult(payload){
+  aiBtn.disabled = false;
+  aiBtn.innerHTML = '<span>🤖</span><span>召唤 AI 深度调研</span>';
+  const ar = document.getElementById('aiResult');
+  ar.classList.remove('loading');
+  ar.classList.add('show');
+  const now = new Date().toTimeString().slice(0,8);
+  const trendArrow = (t)=> t==='up'? '<span style="color:var(--up);">▲</span>' : t==='dn'? '<span style="color:var(--down);">▼</span>' : '<span style="color:var(--ink-3);">·</span>';
+  const trendCls = (t)=> t==='up'?'up':t==='dn'?'dn':'';
+  ar.innerHTML = `
+    <div class="head">
+      <div class="ai-icon">AI</div>
+      <span>调研完成 · 已回填客观数据</span>
+      <span class="when mono">${now}</span>
+    </div>
+    <div class="summary">${payload.summary}</div>
+    <div class="data-grid">
+      ${(payload.metrics||[]).map(m=>`
+        <div class="d">
+          <div class="l">${trendArrow(m.trend)} ${m.label}</div>
+          <div class="v ${trendCls(m.trend)}">${m.value}</div>
+        </div>
+      `).join('')}
+    </div>
+    <ul class="points">
+      ${(payload.points||[]).map(p=>`<li>${p}</li>`).join('')}
+    </ul>
+    ${payload.caveat ? `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.06); font-size:11px; color:var(--ink-3); line-height:1.5;">⚠ 口径：${payload.caveat}</div>`:''}
+  `;
+}
+
+/* =========================================================================
+   live tick
+   ========================================================================= */
+function tick(){
+  // perturb 2-4 visible items in current view
+  const target = state.view==='Feed' ? null : document.querySelectorAll('#stockList .stock-item');
+  if(!target || !target.length){
+    refreshSummary();
+    return;
+  }
+  const n = Math.min(3, target.length);
+  for(let i=0;i<n;i++){
+    const el = target[Math.floor(Math.random()*target.length)];
+    const sy = el.dataset.symbol;
+    const c = cache[sy]; if(!c) continue;
+    const drift = (Math.random()-0.49)*0.6;
+    const delta = c.last * (drift/100);
+    c.last += delta; c.chg += delta; c.pct += drift;
+    const up = c.pct>=0;
+    el.querySelector('.price').textContent = fmtPrice(c.last);
+    el.querySelector('.price').style.color = up?'var(--up)':'var(--down)';
+    const pctEl = el.querySelector('.pct');
+    pctEl.textContent = (up?'+':'')+c.pct.toFixed(2)+'%';
+    pctEl.className = 'pct mono ' + (up?'up':'dn');
+    el.classList.remove('flash-up','flash-dn');
+    void el.offsetWidth;
+    el.classList.add(drift>=0?'flash-up':'flash-dn');
+  }
+  refreshSummary();
+}
+
+/* =========================================================================
+   bootstrap
+   ========================================================================= */
+buildCache();
+renderTabs();
+renderStocks();
+renderFeed(true);
+bindFeedScroll();
+refreshSummary();
+setInterval(tick, 2400);
+</script>
+</body>
+</html>
