@@ -334,16 +334,18 @@
   /* ─────────── bottom nav ─────────── */
   .bottom-nav{
     position:absolute; left:0; right:0; bottom:0;
-    /* 上方内容区 + 底部 safe-area（Home 横条） */
-    padding: 8px 18px calc(env(safe-area-inset-bottom, 0px) + 10px);
-    /* 背景延伸到底部物理边缘，彻底消除白边 */
-    background: linear-gradient(180deg, rgba(11,18,32,0.9), #070c18);
+    padding: 8px 10px 10px;
+    /* 底部 safe-area 单独声明，让背景色完全填满 Home 横条区域 */
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    min-height: 60px;
+    background: rgba(7,12,24,0.96);
+    background: linear-gradient(180deg, rgba(11,18,32,0.94), #070c18 40%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid rgba(36,51,83,0.5);
     display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
     z-index: 6;
   }
   .nav-item{
@@ -367,6 +369,75 @@
     background: linear-gradient(90deg, var(--primary), var(--accent));
     border-radius: 0 0 2px 2px;
   }
+
+  /* ─────────── thoughts view ─────────── */
+  .thoughts-input-wrap{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius); padding:14px; margin-bottom:14px;
+  }
+  .thoughts-textarea{
+    width:100%; min-height:96px; resize:none; display:block;
+    background:var(--bg-1); border:1px solid var(--line);
+    color:var(--ink); border-radius:10px; padding:12px 14px;
+    font-family:'Inter',-apple-system,sans-serif; font-size:13px; line-height:1.65;
+  }
+  .thoughts-textarea:focus{ outline:none; border-color:var(--primary); }
+  .thoughts-textarea::placeholder{ color:var(--ink-3); }
+
+  .dim-chips-wrap{
+    margin-top:10px; overflow-x:auto; overflow-y:hidden;
+    scrollbar-width:none; display:flex;
+  }
+  .dim-chips-wrap::-webkit-scrollbar{ display:none; }
+  .dim-chips{ display:inline-flex; gap:6px; padding:2px; flex-shrink:0; }
+  .dim-chip{
+    padding:6px 13px; border-radius:999px; cursor:pointer;
+    font-size:12px; font-weight:500; white-space:nowrap;
+    border:1px solid var(--line-2); color:var(--ink-2);
+    background:transparent; transition:all 180ms;
+  }
+  .dim-chip.active.macro    { color:#60a5fa; background:rgba(96,165,250,.14);   border-color:rgba(96,165,250,.35); }
+  .dim-chip.active.supply   { color:var(--watch); background:var(--watch-bg);  border-color:rgba(245,158,11,.35); }
+  .dim-chip.active.stock    { color:var(--up);    background:var(--up-bg);     border-color:rgba(62,224,143,.35); }
+  .dim-chip.active.discipline{ color:#f472b6; background:rgba(244,114,182,.14); border-color:rgba(244,114,182,.35); }
+
+  .record-btn{
+    margin-top:12px; width:100%; display:block;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    color:#fff; border:none; cursor:pointer;
+    padding:12px; border-radius:10px;
+    font-size:14px; font-weight:600; transition:transform 120ms;
+  }
+  .record-btn:active{ transform:scale(0.985); }
+
+  .thoughts-hist-title{
+    font-size:13px; font-weight:600; color:var(--ink);
+    display:flex; align-items:center; gap:8px; padding:4px 0 10px;
+  }
+  .thoughts-hist-title::before{
+    content:''; width:3px; height:12px;
+    background:linear-gradient(180deg,var(--primary),var(--accent)); border-radius:2px;
+  }
+  .thought-list{ display:flex; flex-direction:column; gap:8px; }
+  .thought-card{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius); padding:12px 14px;
+    animation:fadeUp 280ms ease;
+  }
+  .thought-card .tc-header{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .thought-card .tc-time{
+    margin-left:auto; font-family:'JetBrains Mono',monospace;
+    font-size:11px; color:var(--ink-3);
+  }
+  .thought-card .tc-body{ font-size:13px; color:var(--ink-2); line-height:1.6; }
+  .dim-badge{
+    font-size:10px; font-weight:600;
+    padding:2px 8px; border-radius:4px; letter-spacing:0.04em;
+  }
+  .dim-badge.macro    { color:#60a5fa; background:rgba(96,165,250,.14); }
+  .dim-badge.supply   { color:var(--watch); background:var(--watch-bg); }
+  .dim-badge.stock    { color:var(--up);    background:var(--up-bg); }
+  .dim-badge.discipline{ color:#f472b6; background:rgba(244,114,182,.14); }
 
   /* ─────────── detail page ─────────── */
   .detail{
@@ -665,6 +736,46 @@
       <div class="stock-list" id="stockList"></div>
     </div>
 
+    <!-- VIEW 3: Thoughts -->
+    <div class="view" id="viewThoughts">
+      <div class="thoughts-input-wrap">
+        <textarea class="thoughts-textarea" id="thoughtInput" placeholder="记录宏观流动性、产业链供需缺口或具体的交易纪律..." rows="4"></textarea>
+        <div class="dim-chips-wrap">
+          <div class="dim-chips" id="dimChips">
+            <span class="dim-chip macro"            data-dim="宏观大势" data-cls="macro">宏观大势</span>
+            <span class="dim-chip supply active"    data-dim="产业供需" data-cls="supply">产业供需</span>
+            <span class="dim-chip stock"            data-dim="个股标的" data-cls="stock">个股标的</span>
+            <span class="dim-chip discipline"       data-dim="交易纪律" data-cls="discipline">交易纪律</span>
+          </div>
+        </div>
+        <button class="record-btn" id="recordBtn">记录备忘</button>
+      </div>
+      <div class="thoughts-hist-title">历史备忘</div>
+      <div class="thought-list" id="thoughtList">
+        <div class="thought-card">
+          <div class="tc-header">
+            <span class="dim-badge supply">产业供需</span>
+            <span class="tc-time">05-06 09:30</span>
+          </div>
+          <div class="tc-body">钨精矿供给端物理约束未松动，长单价格连续上调，逻辑链完整。关注 Q3 后产能扩张是否改变供需格局。</div>
+        </div>
+        <div class="thought-card">
+          <div class="tc-header">
+            <span class="dim-badge discipline">交易纪律</span>
+            <span class="tc-time">05-05 15:20</span>
+          </div>
+          <div class="tc-body">严守能力圈：不碰没有完整产业链调研的新标的。单仓位不超过组合的 15%。</div>
+        </div>
+        <div class="thought-card">
+          <div class="tc-header">
+            <span class="dim-badge macro">宏观大势</span>
+            <span class="tc-time">05-05 08:45</span>
+          </div>
+          <div class="tc-body">美联储 5 月暂停加息概率上升至 85%，美元流动性边际改善，有利港股估值修复。</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- bottom nav -->
@@ -676,6 +787,10 @@
     <div class="nav-item" id="navWatch" data-view="Watch">
       <span class="icn">📊</span>
       <span>自选全景</span>
+    </div>
+    <div class="nav-item" id="navThoughts" data-view="Thoughts">
+      <span class="icn">💡</span>
+      <span>想法</span>
     </div>
   </div>
 
@@ -1106,15 +1221,54 @@ function refreshSummary(){
 function switchView(view){
   if(state.view===view) return;
   state.view = view;
-  document.getElementById('viewFeed').classList.toggle('active', view==='Feed');
-  document.getElementById('viewWatch').classList.toggle('active', view==='Watch');
-  document.getElementById('navFeed').classList.toggle('active', view==='Feed');
-  document.getElementById('navWatch').classList.toggle('active', view==='Watch');
-  document.getElementById('appTitle').textContent = view==='Feed'?'高压信号流':'自选全景';
-  document.getElementById('appSub').textContent  = view==='Feed'?'76 标的 · 严守能力圈':'5 个分组 · 完整观测池';
+  ['Feed','Watch','Thoughts'].forEach(v=>{
+    document.getElementById('view'+v).classList.toggle('active', view===v);
+    document.getElementById('nav'+v).classList.toggle('active', view===v);
+  });
+  const titles    = {Feed:'高压信号流', Watch:'自选全景', Thoughts:'投研想法'};
+  const subtitles = {Feed:'76 标的 · 严守能力圈', Watch:'5 个分组 · 完整观测池', Thoughts:'推演 · 观察 · 纪律'};
+  document.getElementById('appTitle').textContent = titles[view];
+  document.getElementById('appSub').textContent   = subtitles[view];
 }
-document.getElementById('navFeed').addEventListener('click', ()=>switchView('Feed'));
-document.getElementById('navWatch').addEventListener('click',()=>switchView('Watch'));
+document.getElementById('navFeed').addEventListener('click',     ()=>switchView('Feed'));
+document.getElementById('navWatch').addEventListener('click',    ()=>switchView('Watch'));
+document.getElementById('navThoughts').addEventListener('click', ()=>switchView('Thoughts'));
+
+/* ── 💡 想法 Tab 交互 ── */
+(function(){
+  let activeDim = { dim:'产业供需', cls:'supply' };
+
+  document.getElementById('dimChips').addEventListener('click', e=>{
+    const chip = e.target.closest('.dim-chip');
+    if(!chip) return;
+    document.querySelectorAll('#dimChips .dim-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    activeDim = { dim: chip.dataset.dim, cls: chip.dataset.cls };
+  });
+
+  document.getElementById('recordBtn').addEventListener('click', ()=>{
+    const ta   = document.getElementById('thoughtInput');
+    const text = ta.value.trim();
+    if(!text) return;
+    const now = new Date();
+    const ts  = String(now.getMonth()+1).padStart(2,'0') + '-' +
+                String(now.getDate()).padStart(2,'0')    + ' ' +
+                String(now.getHours()).padStart(2,'0')   + ':' +
+                String(now.getMinutes()).padStart(2,'0');
+    const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const card = document.createElement('div');
+    card.className = 'thought-card';
+    card.innerHTML =
+      `<div class="tc-header">` +
+        `<span class="dim-badge ${activeDim.cls}">${activeDim.dim}</span>` +
+        `<span class="tc-time">${ts}</span>` +
+      `</div>` +
+      `<div class="tc-body">${safe}</div>`;
+    const list = document.getElementById('thoughtList');
+    list.insertBefore(card, list.firstChild);
+    ta.value = '';
+  });
+})();
 
 /* =========================================================================
    DETAIL page
