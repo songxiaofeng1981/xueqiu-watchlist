@@ -63,13 +63,14 @@
 
   /* ─────────── app shell ─────────── */
   #app{
-    width:100%;
-    max-width:480px;
-    margin:0 auto;
-    /* 用 100dvh 适配移动端动态视口（含底部横条） */
-    height:100vh;
-    height:100dvh;
-    position:relative;
+    /* position:fixed + top/bottom:0 直接钉住物理屏幕边缘
+       彻底绕开 100dvh 在 iOS PWA 模式下的计算偏差 */
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    /* 宽屏自动居中限宽 480px，窄屏满铺 */
+    left:  max(0px, calc(50vw - 240px));
+    right: max(0px, calc(50vw - 240px));
     overflow:hidden;
     background:linear-gradient(180deg,#0b1220,#0e1730);
     box-shadow: 0 0 60px rgba(0,0,0,0.5);
@@ -675,7 +676,8 @@
   /* desktop adjustments — only when NOT in standalone mode */
   @media (min-width: 600px) and (display-mode: browser){
     body{ overflow:auto; padding: 20px; background: var(--bg-0); }
-    #app{ height: calc(100dvh - 40px); border-radius: 24px; border:1px solid var(--line); overflow:hidden;}
+    /* #app 保持 fixed，只需收缩上下边距并加圆角 */
+    #app{ top:20px; bottom:20px; border-radius: 24px; border:1px solid var(--line); }
   }
 </style>
 </head>
